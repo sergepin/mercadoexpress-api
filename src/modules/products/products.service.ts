@@ -24,7 +24,6 @@ import { Product } from './entities/product.entity';
 
 export interface AdjustStockOptions {
   manager?: EntityManager;
-  /** Por defecto: true si no hay manager externo, false si participa en otra transacción */
   emitEvent?: boolean;
 }
 
@@ -206,10 +205,6 @@ export class ProductsService {
     return updatedProduct;
   }
 
-  /**
-   * Emite stock.adjusted tras un commit externo (p. ej. recepción de orden).
-   * Usar solo cuando adjustStock se llamó con emitEvent: false.
-   */
   emitStockAdjustedEvent(product: Product): void {
     this.emitStockAdjusted(product);
   }
