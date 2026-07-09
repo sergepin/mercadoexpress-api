@@ -7,13 +7,14 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Alert } from '../../alerts/entities/alert.entity';
 import { Product } from '../../products/entities/product.entity';
 
 export enum PurchaseOrderStatus {
   PENDIENTE = 'PENDIENTE',
-  ENVIADA = 'ENVIADA',
+  APROBADA = 'APROBADA',
+  RECHAZADA = 'RECHAZADA',
   RECIBIDA = 'RECIBIDA',
-  CANCELADA = 'CANCELADA',
 }
 
 @Entity('purchase_orders')
@@ -28,6 +29,13 @@ export class PurchaseOrder {
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
+  @Column({ name: 'alert_id', type: 'int', nullable: true })
+  alertId: number | null;
+
+  @ManyToOne(() => Alert, { nullable: true })
+  @JoinColumn({ name: 'alert_id' })
+  alert: Alert | null;
+
   @Column('int')
   quantity: number;
 
@@ -36,6 +44,9 @@ export class PurchaseOrder {
 
   @Column()
   supplier: string;
+
+  @Column({ name: 'rejection_reason', type: 'varchar', nullable: true })
+  rejectionReason: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

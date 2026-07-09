@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Alert, AlertStatus } from '../alerts/entities/alert.entity';
 import { InventoryMovementsService } from '../inventory-movements/inventory-movements.service';
 import { MovementType } from '../inventory-movements/entities/movement.entity';
@@ -123,9 +123,13 @@ export class ProductsService {
     return product;
   }
 
-  async adjustStock(id: number, dto: AdjustStockDto): Promise<Product> {
-    const updatedProduct = await this.dataSource.transaction(async (manager) => {
-      const productRepo = manager.getRepository(Product);
+  async adjustStock(
+    id: number,
+    dto: AdjustStockDto,
+    manager?: EntityManager,
+  ): Promise<Product> {
+    const execute = async (em: EntityManager): Promise<Product> => {
+      const productRepo = em.getRepository(Product);
       const product = await productRepo.findOne({
         where: { id },
         relations: { category: true },
@@ -161,14 +165,25 @@ export class ProductsService {
           stockBefore,
           stockAfter,
         },
-        manager,
+        em,
       );
 
       return saved;
-    });
+    };
 
-    this.emitStockAdjusted(updatedProduct);
+    const updatedProduct = manager
+      ? await execute(manager)
+      : await this.dataSource.transaction(execute);
+
+    if (!manager) {
+      this.emitStockAdjusted(updatedProduct);
+    }
+
     return updatedProduct;
+  }
+
+  publishStockAdjusted(product: Product): void {
+    this.emitStockAdjusted(product);
   }
 
   private mapAdjustmentType(type: StockAdjustmentType): MovementType {
