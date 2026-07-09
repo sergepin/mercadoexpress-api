@@ -1,0 +1,134 @@
+---
+description: Arquitectura, estructura de carpetas y patrones de diseño a seguir
+alwaysApply: true
+---
+
+# Arquitectura
+
+Arquitectura **modular en capas** (layered), pragmática — no hexagonal/DDD puro.
+Justificación: el timebox es de 3 días; se prioriza cobertura de reglas de
+negocio y tests sobre abstracción máxima. Esta decisión debe quedar explícita
+en el README del proyecto, no la cuestiones ni la "mejores" agregando capas
+de puertos/adaptadores.
+
+## Estructura de carpetas objetivo
+
+```
+src/
+  modules/
+    products/
+      dto/
+        create-product.dto.ts
+        adjust-stock.dto.ts
+        filter-products.dto.ts
+      entities/
+        product.entity.ts
+      products.controller.ts
+      products.service.ts
+      products.module.ts
+      products.service.spec.ts
+    inventory-movements/
+      entities/movement.entity.ts
+      inventory-movements.service.ts
+      inventory-movements.module.ts
+    alerts/
+      entities/alert.entity.ts
+      alerts.service.ts
+      alerts.module.ts
+      alerts.listener.ts
+    purchase-orders/
+      dto/
+      entities/purchase-order.entity.ts
+      purchase-orders.controller.ts
+      purchase-orders.service.ts
+      purchase-orders.module.ts
+  common/
+    filters/http-exception.filter.ts
+    interceptors/
+    pipes/
+  database/
+    seed.ts
+    data-source.ts
+  main.ts
+  app.module.ts
+docker-compose.yml
+Dockerfile
+.env.example
+```
+
+## Infraestructura (Docker)
+
+El proyecto debe poder levantarse completo con un solo comando:
+
+```bash
+docker-compose up --build
+```
+
+`docker-compose.yml` debe definir al menos dos servicios:
+- `api`: build desde el `Dockerfile` del proyecto, expone el puerto (ej. 3000),
+  depende de `db` (`depends_on`), lee configuración desde variables de entorno.
+- `db`: imagen oficial `postgres` (con tag de versión fija, ej. `postgres:16`),
+  con volumen para persistencia y variables `POSTGRES_USER`,
+  `POSTGRES_PASSWORD`, `POSTGRES_DB`.
+
+El `Dockerfile` de la API debe ser multi-stage (build de TypeScript en una
+etapa, imagen final más liviana con solo el `dist/` y `node_modules` de
+producción) — no es obligatorio pero suma en calidad.
+
+Debe existir un `.env.example` con todas las variables necesarias
+(`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `PORT`), y el
+README debe explicar que solo hace falta copiarlo a `.env` para correr el
+proyecto. El seed de datos de referencia (RF de datos de ejemplo) debe
+poder ejecutarse automáticamente al levantar el contenedor, o documentarse
+como un comando aparte (`npm run seed` o similar) — decide una opción y
+documéntala, no dejes ambigüedad para el examinador.
+
+## Responsabilidad por capa (no mezclar)
+
+- **Controller**: solo recibe request, valida vía DTO (pipes globales), llama
+  al service, devuelve response. Nunca lógica de negocio aquí.
+- **Service**: dueño de las reglas de negocio (RN-01 a RN-06). Debe ser
+  testeable sin necesidad de levantar HTTP.
+- **Entity**: definición de tabla TypeORM, sin lógica de negocio.
+- **DTO**: forma y validación de entrada/salida, con decoradores de
+  `class-validator`.
+
+## Patrón de eventos para alertas (obligatorio)
+
+El ajuste de stock y la gestión de alertas deben estar desacoplados:
+
+1. `ProductsService.adjustStock()` ejecuta el ajuste, guarda el movimiento en
+   `inventory-movements`, y al final emite un evento `stock.adjusted` con
+   `{ productId, newStock, minStock }` vía `EventEmitter2`.
+2. `AlertsService`, mediante un listener (`@OnEvent('stock.adjusted')`),
+   decide si crear una alerta STOCK_BAJO o resolver la existente.
+3. `ProductsService` **no debe importar ni llamar directamente** a
+   `AlertsService`. La comunicación es solo por eventos.
+
+Esto también aplica al recibir una orden de compra (`purchase-orders`):
+al pasar a RECIBIDA, se incrementa el stock del producto (reutilizando
+`ProductsService.adjustStock()` con tipo "entrada"), lo que dispara el mismo
+evento y, en consecuencia, el posible cierre de alerta — no dupliques esa
+lógica en `purchase-orders`.
+
+## Transacciones
+
+Cualquier operación que toque más de una tabla (ajuste de stock + movimiento
++ alerta, o recepción de orden + ajuste de stock) debe ejecutarse dentro de
+una transacción TypeORM (`QueryRunner` o `DataSource.transaction()`) para
+evitar estados inconsistentes.
+
+## Manejo de errores
+
+- Usar excepciones de Nest (`BadRequestException`, `NotFoundException`,
+  `ConflictException`, etc.), nunca `throw new Error(...)` genérico.
+- Los mensajes de error deben ser específicos y accionables (ej: "Stock
+  insuficiente: disponible 10, solicitado 15, faltan 5").
+- Un `HttpExceptionFilter` global en `common/filters/` debe normalizar el
+  formato de respuesta de error en todo el API.
+
+## Documentación de API
+
+Anotar controllers y DTOs con decoradores de `@nestjs/swagger`
+(`@ApiTags`, `@ApiProperty`, `@ApiResponse`) para que la documentación se
+genere junto con el código, no como paso separado al final.

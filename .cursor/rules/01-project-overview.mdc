@@ -1,0 +1,65 @@
+---
+description: Contexto general del proyecto, objetivo de negocio y stack tecnológico
+alwaysApply: true
+---
+
+# Proyecto: Sistema de Gestión de Inventario — MercadoExpress
+
+## Contexto de negocio
+
+API REST para MercadoExpress, una cadena de tiendas minoristas. El sistema debe:
+- Controlar stock de productos.
+- Generar alertas automáticas cuando el stock baja del mínimo.
+- Gestionar órdenes de compra a proveedores.
+
+Esto es una **prueba técnica**, no un producto comercial. Se evalúa:
+cumplimiento funcional, arquitectura, calidad de código, manejo de errores,
+seguridad, cobertura de tests y documentación. Prioriza siempre la
+**corrección de las reglas de negocio** por encima de features extra no pedidas.
+
+## Stack tecnológico (ya decidido, no proponer alternativas)
+
+- **Framework**: NestJS + TypeScript
+- **Base de datos**: PostgreSQL
+- **Driver**: `pg`
+- **ORM**: TypeORM
+- **Validación**: `class-validator` + `class-transformer` en DTOs
+- **Eventos internos**: `@nestjs/event-emitter` (para desacoplar alertas del ajuste de stock)
+- **Configuración**: `@nestjs/config` (variables de entorno vía `.env`)
+- **Testing**: Jest (unitarios) + Supertest (e2e), ambos ya incluidos por Nest CLI
+- **Documentación API**: `@nestjs/swagger`
+- **Lint/Format**: ESLint + Prettier (scaffold por defecto de Nest)
+- **Infraestructura**: Docker + docker-compose (contenedor de la API +
+  contenedor de PostgreSQL), para que el examinador levante todo con
+  `docker-compose up` sin instalar nada localmente.
+
+No sugieras cambiar de framework, ORM o motor de base de datos. No agregues
+Redis, colas, microservicios, GraphQL u otras tecnologías no listadas salvo
+que se pida explícitamente. Para tests e2e, usar una base de datos Postgres
+separada (otro contenedor o esquema), nunca contra la base de datos de
+desarrollo.
+
+## Módulos de dominio
+
+- `products` — RF-01 (registro de productos)
+- `inventory-movements` — RF-02 (historial de ajustes de stock, inmutable)
+- `alerts` — RF-03 (alertas de stock bajo)
+- `purchase-orders` — RF-04 y RF-05 (órdenes de compra y su ciclo de vida)
+
+Cada módulo sigue: `Controller` (HTTP) → `Service` (lógica de negocio) →
+`Entity/Repository` (TypeORM). Los DTOs viven en `dto/` dentro de cada módulo.
+
+## Datos semilla (seed) obligatorios
+
+Categorías: Bebidas, Lácteos, Snacks, Limpieza, Frutas, Granos.
+
+Productos iniciales (SKU, nombre, categoría, precio, stock, stock mínimo, proveedor):
+- BEB001, Agua Mineral 500ml, Bebidas, 1500, 150, 50, Distribuidora Andina
+- BEB002, Jugo de Naranja 1L, Bebidas, 3200, 30, 40, Lácteos del Valle
+- LAC001, Leche Entera 1L, Lácteos, 2100, 200, 60, Lácteos del Valle
+- LAC002, Yogur Natural 500g, Lácteos, 2800, 15, 25, Lácteos del Valle
+- SNA001, Papas Fritas 200g, Snacks, 2500, 80, 30, SnacksCorp
+- LIM001, Detergente 1L, Limpieza, 4500, 45, 20, Químicos del Sur
+
+Nota: BEB002 y LAC002 nacen con stock por debajo de su mínimo, así que al
+correr el seed deben generar automáticamente una alerta STOCK_BAJO activa.
