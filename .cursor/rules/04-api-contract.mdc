@@ -1,0 +1,139 @@
+---
+description: Contrato HTTP esperado para la API REST
+alwaysApply: true
+---
+
+# API Contract
+
+## Productos
+
+### POST /products
+
+Crear un producto.
+
+Validaciones:
+
+- SKU único
+- precio > 0
+- stock >= 0
+- stock mínimo > 0
+- nombre entre 3 y 100 caracteres
+
+### GET /products
+
+Permite filtrar por:
+
+- categoría
+- proveedor
+- rango de stock
+- productos con alerta activa
+
+### GET /products/:id
+
+Consultar un producto.
+
+### PATCH /products/:id/stock
+
+Ajustar inventario.
+
+Body:
+
+```json
+{
+  "type": "ENTRY | EXIT",
+  "quantity": 10,
+  "reason": "Compra inicial"
+}
+```
+
+Debe:
+
+- actualizar stock
+- registrar movimiento
+- emitir `stock.adjusted`
+
+## Alertas
+
+### GET /alerts
+
+Lista todas las alertas.
+
+Filtros opcionales:
+
+- ACTIVA
+- RESUELTA
+
+No existen endpoints para crear o cerrar alertas manualmente.
+
+## Órdenes de compra
+
+### POST /purchase-orders
+
+Crear orden manual o desde una alerta.
+
+Validaciones:
+
+- cantidad >= stockMinimo * 2
+
+Estado inicial:
+
+```
+PENDIENTE
+```
+
+### GET /purchase-orders
+
+Listar órdenes.
+
+### GET /purchase-orders/:id
+
+Consultar una orden.
+
+### PATCH /purchase-orders/:id/approve
+
+Transición:
+
+```
+PENDIENTE -> APROBADA
+```
+
+### PATCH /purchase-orders/:id/reject
+
+Body:
+
+```json
+{
+  "reason": "Motivo de al menos 10 caracteres"
+}
+```
+
+Transición:
+
+```
+PENDIENTE -> RECHAZADA
+```
+
+### PATCH /purchase-orders/:id/receive
+
+Transición:
+
+```
+APROBADA -> RECIBIDA
+```
+
+Debe:
+
+- incrementar stock
+- registrar movimiento
+- reutilizar `ProductsService.adjustStock()`
+- emitir `stock.adjusted`
+
+## Respuestas HTTP
+
+- 200 OK
+- 201 Created
+- 400 Bad Request
+- 404 Not Found
+- 409 Conflict
+
+Todos los errores deben usar excepciones de NestJS y el filtro global.

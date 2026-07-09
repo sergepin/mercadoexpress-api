@@ -1,0 +1,73 @@
+---
+description: Reglas de negocio obligatorias del sistema de inventario
+alwaysApply: true
+---
+
+# Reglas de Negocio
+
+Estas reglas tienen prioridad sobre cualquier decisión de implementación.
+
+## RN-01 — No permitir stock negativo
+
+Un ajuste de salida nunca puede dejar el stock por debajo de cero.
+
+Si una operación intenta retirar más unidades de las disponibles, debe lanzar una `BadRequestException` indicando claramente:
+
+- stock disponible
+- cantidad solicitada
+- cantidad faltante
+
+Ejemplo:
+
+```
+Stock insuficiente: disponible 10, solicitado 15, faltan 5
+```
+
+## RN-02 — Cantidad mínima de una orden
+
+Toda orden de compra debe solicitar como mínimo:
+
+```
+stockMinimo * 2
+```
+
+## RN-03 — Generación automática de alertas
+
+Cuando el stock de un producto queda igual o por debajo del stock mínimo, debe existir una alerta activa de tipo `STOCK_BAJO`.
+
+La generación de la alerta debe realizarse mediante eventos.
+
+## RN-04 — Una sola alerta activa por producto
+
+Nunca pueden existir dos alertas activas para el mismo producto.
+
+## RN-05 — Cierre automático de alertas
+
+Cuando el stock vuelve a estar por encima del stock mínimo, la alerta activa debe pasar automáticamente a estado `RESUELTA`.
+
+## RN-06 — Historial inmutable
+
+Los movimientos de inventario nunca pueden modificarse ni eliminarse.
+
+## RN-07 — Flujo de estados de órdenes
+
+```
+PENDIENTE -> APROBADA
+PENDIENTE -> RECHAZADA
+APROBADA -> RECIBIDA
+```
+
+No se permiten otras transiciones.
+
+## RN-08 — Rechazo de órdenes
+
+Una orden rechazada debe registrar un motivo obligatorio de al menos 10 caracteres.
+
+## RN-09 — Recepción de órdenes
+
+Al recibir una orden:
+
+1. aumentar el stock del producto
+2. registrar un movimiento de tipo ENTRADA
+3. emitir el evento `stock.adjusted`
+4. permitir que el listener de alertas determine si debe cerrar la alerta

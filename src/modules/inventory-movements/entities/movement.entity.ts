@@ -15,11 +15,11 @@ export enum MovementType {
 
 @Entity('inventory_movements')
 export class InventoryMovement {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ name: 'product_id' })
-  productId: string;
+  @Column({ name: 'product_id', type: 'int' })
+  productId: number;
 
   @ManyToOne(() => Product, { nullable: false })
   @JoinColumn({ name: 'product_id' })

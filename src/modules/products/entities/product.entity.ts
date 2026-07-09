@@ -11,8 +11,8 @@ import { Category } from './category.entity';
 
 @Entity('products')
 export class Product {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
   @Column({ unique: true, length: 50 })
   sku: string;
@@ -27,8 +27,8 @@ export class Product {
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
-  @Column({ name: 'category_id' })
-  categoryId: string;
+  @Column({ name: 'category_id', type: 'int' })
+  categoryId: number;
 
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;

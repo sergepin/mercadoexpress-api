@@ -18,11 +18,11 @@ export enum PurchaseOrderStatus {
 
 @Entity('purchase_orders')
 export class PurchaseOrder {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-  @Column({ name: 'product_id' })
-  productId: string;
+  @Column({ name: 'product_id', type: 'int' })
+  productId: number;
 
   @ManyToOne(() => Product, { nullable: false })
   @JoinColumn({ name: 'product_id' })

@@ -6,7 +6,7 @@ export class InitialSchema1740000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "categories" (
-        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+        "id" SERIAL NOT NULL,
         "name" character varying NOT NULL,
         CONSTRAINT "UQ_categories_name" UNIQUE ("name"),
         CONSTRAINT "PK_categories" PRIMARY KEY ("id")
@@ -15,10 +15,10 @@ export class InitialSchema1740000000000 implements MigrationInterface {
 
     await queryRunner.query(`
       CREATE TABLE "products" (
-        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
+        "id" SERIAL NOT NULL,
         "sku" character varying(50) NOT NULL,
         "name" character varying NOT NULL,
-        "category_id" uuid NOT NULL,
+        "category_id" integer NOT NULL,
         "price" numeric(10,2) NOT NULL,
         "stock" integer NOT NULL,
         "min_stock" integer NOT NULL,
@@ -34,8 +34,8 @@ export class InitialSchema1740000000000 implements MigrationInterface {
 
     await queryRunner.query(`
       CREATE TABLE "inventory_movements" (
-        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-        "product_id" uuid NOT NULL,
+        "id" SERIAL NOT NULL,
+        "product_id" integer NOT NULL,
         "type" character varying(20) NOT NULL,
         "quantity" integer NOT NULL,
         "reason" character varying NOT NULL,
@@ -50,8 +50,8 @@ export class InitialSchema1740000000000 implements MigrationInterface {
 
     await queryRunner.query(`
       CREATE TABLE "alerts" (
-        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-        "product_id" uuid NOT NULL,
+        "id" SERIAL NOT NULL,
+        "product_id" integer NOT NULL,
         "type" character varying(30) NOT NULL,
         "status" character varying(20) NOT NULL,
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -64,8 +64,8 @@ export class InitialSchema1740000000000 implements MigrationInterface {
 
     await queryRunner.query(`
       CREATE TABLE "purchase_orders" (
-        "id" uuid NOT NULL DEFAULT gen_random_uuid(),
-        "product_id" uuid NOT NULL,
+        "id" SERIAL NOT NULL,
+        "product_id" integer NOT NULL,
         "quantity" integer NOT NULL,
         "status" character varying(20) NOT NULL,
         "supplier" character varying NOT NULL,
