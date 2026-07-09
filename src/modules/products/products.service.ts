@@ -19,6 +19,7 @@ import {
 } from './events/stock-adjusted.event';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
+import { normalizedTextEquals } from '../../common/utils/normalized-text-search';
 
 @Injectable()
 export class ProductsService {
@@ -77,11 +78,13 @@ export class ProductsService {
       .leftJoinAndSelect('product.category', 'category');
 
     if (filters.category) {
-      qb.andWhere('category.name = :category', { category: filters.category });
+      qb.andWhere(normalizedTextEquals('category.name', 'category'), {
+        category: filters.category,
+      });
     }
 
     if (filters.supplier) {
-      qb.andWhere('product.supplier = :supplier', {
+      qb.andWhere(normalizedTextEquals('product.supplier', 'supplier'), {
         supplier: filters.supplier,
       });
     }

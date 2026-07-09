@@ -151,6 +151,42 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('findAll', () => {
+    it('aplica filtro de categoría insensible a mayúsculas y acentos', async () => {
+      const andWhere = jest.fn().mockReturnThis();
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        andWhere,
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      productRepository.createQueryBuilder.mockReturnValue(qb as never);
+
+      await service.findAll({ category: 'lacteos' });
+
+      expect(andWhere).toHaveBeenCalledWith(
+        'unaccent(lower(trim(category.name))) = unaccent(lower(trim(:category)))',
+        { category: 'lacteos' },
+      );
+    });
+
+    it('aplica filtro de proveedor insensible a mayúsculas y acentos', async () => {
+      const andWhere = jest.fn().mockReturnThis();
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        andWhere,
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      productRepository.createQueryBuilder.mockReturnValue(qb as never);
+
+      await service.findAll({ supplier: 'LACTEOS DEL VALLE' });
+
+      expect(andWhere).toHaveBeenCalledWith(
+        'unaccent(lower(trim(product.supplier))) = unaccent(lower(trim(:supplier)))',
+        { supplier: 'LACTEOS DEL VALLE' },
+      );
+    });
+  });
+
   describe('findOne', () => {
     it('lanza NotFoundException si el producto no existe', async () => {
       productRepository.findOne.mockResolvedValue(null);

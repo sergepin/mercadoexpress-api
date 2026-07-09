@@ -3,12 +3,20 @@ import { Transform } from 'class-transformer';
 import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class FilterProductsDto {
-  @ApiPropertyOptional({ example: 'Bebidas' })
+  @ApiPropertyOptional({
+    example: 'bebidas',
+    description:
+      'Filtra por categoría (insensible a mayúsculas y acentos: "lacteos" = "Lácteos")',
+  })
   @IsOptional()
   @IsString()
   category?: string;
 
-  @ApiPropertyOptional({ example: 'SnacksCorp' })
+  @ApiPropertyOptional({
+    example: 'lacteos del valle',
+    description:
+      'Filtra por proveedor (insensible a mayúsculas y acentos)',
+  })
   @IsOptional()
   @IsString()
   supplier?: string;
