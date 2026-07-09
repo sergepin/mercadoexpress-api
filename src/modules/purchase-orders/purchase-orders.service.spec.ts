@@ -79,7 +79,7 @@ describe('PurchaseOrdersService', () => {
 
     productsService = {
       adjustStock: jest.fn(),
-      publishStockAdjusted: jest.fn(),
+      emitStockAdjustedEvent: jest.fn(),
     } as unknown as jest.Mocked<ProductsService>;
 
     dataSource = {
@@ -207,7 +207,7 @@ describe('PurchaseOrdersService', () => {
 
       expect(result.status).toBe(PurchaseOrderStatus.RECIBIDA);
       expect(productsService.adjustStock).toHaveBeenCalled();
-      expect(productsService.publishStockAdjusted).toHaveBeenCalledWith(
+      expect(productsService.emitStockAdjustedEvent).toHaveBeenCalledWith(
         receivedProduct,
       );
     });

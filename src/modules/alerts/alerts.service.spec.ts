@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { StockAdjustedEvent } from '../products/events/stock-adjusted.event';
+import { StockAdjustedEvent } from '../../common/events/stock-adjusted.event';
 import { AlertsService } from './alerts.service';
 import { Alert, AlertStatus, AlertType } from './entities/alert.entity';
 

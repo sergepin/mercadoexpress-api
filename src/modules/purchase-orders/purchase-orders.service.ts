@@ -5,8 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import {
+  PURCHASE_ORDER_MIN_STOCK_MULTIPLIER,
+} from '../../common/constants/business.constants';
+import { ErrorMessages, formatErrorMessage } from '../../common/constants/error-messages';
+import { MovementReasons } from '../../common/constants/movement-reasons';
 import { Alert, AlertStatus } from '../alerts/entities/alert.entity';
-import { StockAdjustmentType } from '../products/dto/adjust-stock.dto';
+import { MovementType } from '../inventory-movements/entities/movement.entity';
 import { Product } from '../products/entities/product.entity';
 import { ProductsService } from '../products/products.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
@@ -36,14 +41,20 @@ export class PurchaseOrdersService {
 
     if (!product) {
       throw new NotFoundException(
-        `Producto con id ${dto.productId} no encontrado`,
+        formatErrorMessage(ErrorMessages.PRODUCT_NOT_FOUND, {
+          id: dto.productId,
+        }),
       );
     }
 
-    const minQuantity = product.minStock * 2;
+    const minQuantity =
+      product.minStock * PURCHASE_ORDER_MIN_STOCK_MULTIPLIER;
     if (dto.quantity < minQuantity) {
       throw new BadRequestException(
-        `La cantidad mínima es ${minQuantity} (stockMinimo * 2)`,
+        formatErrorMessage(ErrorMessages.PURCHASE_ORDER_MIN_QUANTITY, {
+          minQuantity,
+          multiplier: PURCHASE_ORDER_MIN_STOCK_MULTIPLIER,
+        }),
       );
     }
 
@@ -55,20 +66,16 @@ export class PurchaseOrdersService {
 
       if (!alert) {
         throw new NotFoundException(
-          `Alerta con id ${dto.alertId} no encontrada`,
+          formatErrorMessage(ErrorMessages.ALERT_NOT_FOUND, { id: dto.alertId }),
         );
       }
 
       if (alert.status !== AlertStatus.ACTIVA) {
-        throw new BadRequestException(
-          'Solo se puede crear una orden desde una alerta ACTIVA',
-        );
+        throw new BadRequestException(ErrorMessages.ALERT_MUST_BE_ACTIVE);
       }
 
       if (alert.productId !== dto.productId) {
-        throw new BadRequestException(
-          'La alerta no corresponde al producto indicado',
-        );
+        throw new BadRequestException(ErrorMessages.ALERT_PRODUCT_MISMATCH);
       }
 
       alertId = alert.id;
@@ -100,7 +107,9 @@ export class PurchaseOrdersService {
     });
 
     if (!order) {
-      throw new NotFoundException(`Orden de compra con id ${id} no encontrada`);
+      throw new NotFoundException(
+        formatErrorMessage(ErrorMessages.PURCHASE_ORDER_NOT_FOUND, { id }),
+      );
     }
 
     return order;
@@ -132,8 +141,8 @@ export class PurchaseOrdersService {
 
         if (!order) {
           throw new NotFoundException(
-            `Orden de compra con id ${id} no encontrada`,
-          );
+        formatErrorMessage(ErrorMessages.PURCHASE_ORDER_NOT_FOUND, { id }),
+      );
         }
 
         this.assertTransition(order.status, PurchaseOrderStatus.RECIBIDA);
@@ -143,18 +152,18 @@ export class PurchaseOrdersService {
         const updatedProduct = await this.productsService.adjustStock(
           order.productId,
           {
-            type: StockAdjustmentType.ENTRY,
+            type: MovementType.ENTRADA,
             quantity: order.quantity,
-            reason: `Recepción de orden de compra #${order.id}`,
+            reason: MovementReasons.purchaseOrderReceived(order.id),
           },
-          manager,
+          { manager, emitEvent: false },
         );
 
         return { order: savedOrder, product: updatedProduct };
       },
     );
 
-    this.productsService.publishStockAdjusted(product);
+    this.productsService.emitStockAdjustedEvent(product);
     return order;
   }
 
@@ -174,7 +183,10 @@ export class PurchaseOrdersService {
 
     if (!allowed[current].includes(target)) {
       throw new BadRequestException(
-        `Transición no permitida: ${current} -> ${target}`,
+        formatErrorMessage(ErrorMessages.INVALID_STATUS_TRANSITION, {
+          current,
+          target,
+        }),
       );
     }
   }

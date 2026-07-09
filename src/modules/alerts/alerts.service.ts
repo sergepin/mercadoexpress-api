@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import {
   STOCK_ADJUSTED_EVENT,
   StockAdjustedEvent,
-} from '../products/events/stock-adjusted.event';
+} from '../../common/events/stock-adjusted.event';
 import { FilterAlertsDto } from './dto/filter-alerts.dto';
 import { Alert, AlertStatus, AlertType } from './entities/alert.entity';
 

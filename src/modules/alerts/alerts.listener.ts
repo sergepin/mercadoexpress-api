@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import {
   STOCK_ADJUSTED_EVENT,
   StockAdjustedEvent,
-} from '../products/events/stock-adjusted.event';
+} from '../../common/events/stock-adjusted.event';
 import { AlertsService } from './alerts.service';
 
 @Injectable()

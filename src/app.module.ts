@@ -3,7 +3,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ProductsModule } from './modules/products/products.module';
 import { InventoryMovementsModule } from './modules/inventory-movements/inventory-movements.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
@@ -33,6 +32,5 @@ import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.
     PurchaseOrdersModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

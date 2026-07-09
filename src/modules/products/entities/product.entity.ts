@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { decimalTransformer } from '../../../common/transformers/decimal.transformer';
 import { Category } from './category.entity';
 
 @Entity('products')
@@ -30,7 +31,11 @@ export class Product {
   @Column({ name: 'category_id', type: 'int' })
   categoryId: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', {
+    precision: 10,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   price: number;
 
   @Column('int')

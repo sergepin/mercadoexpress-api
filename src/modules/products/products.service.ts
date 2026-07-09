@@ -7,19 +7,26 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { Alert, AlertStatus } from '../alerts/entities/alert.entity';
-import { InventoryMovementsService } from '../inventory-movements/inventory-movements.service';
-import { MovementType } from '../inventory-movements/entities/movement.entity';
-import { AdjustStockDto, StockAdjustmentType } from './dto/adjust-stock.dto';
-import { CreateProductDto } from './dto/create-product.dto';
-import { FilterProductsDto } from './dto/filter-products.dto';
+import { ErrorMessages, formatErrorMessage } from '../../common/constants/error-messages';
 import {
   STOCK_ADJUSTED_EVENT,
   StockAdjustedEvent,
-} from './events/stock-adjusted.event';
+} from '../../common/events/stock-adjusted.event';
+import { normalizedTextEquals } from '../../common/utils/normalized-text-search';
+import { Alert, AlertStatus } from '../alerts/entities/alert.entity';
+import { InventoryMovementsService } from '../inventory-movements/inventory-movements.service';
+import { MovementType } from '../inventory-movements/entities/movement.entity';
+import { AdjustStockDto } from './dto/adjust-stock.dto';
+import { CreateProductDto } from './dto/create-product.dto';
+import { FilterProductsDto } from './dto/filter-products.dto';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
-import { normalizedTextEquals } from '../../common/utils/normalized-text-search';
+
+export interface AdjustStockOptions {
+  manager?: EntityManager;
+  /** Por defecto: true si no hay manager externo, false si participa en otra transacción */
+  emitEvent?: boolean;
+}
 
 @Injectable()
 export class ProductsService {
@@ -40,7 +47,9 @@ export class ProductsService {
 
     if (!category) {
       throw new NotFoundException(
-        `Categoría con id ${dto.categoryId} no encontrada`,
+        formatErrorMessage(ErrorMessages.CATEGORY_NOT_FOUND, {
+          id: dto.categoryId,
+        }),
       );
     }
 
@@ -49,7 +58,9 @@ export class ProductsService {
     });
 
     if (existingSku) {
-      throw new ConflictException(`El SKU ${dto.sku} ya está registrado`);
+      throw new ConflictException(
+        formatErrorMessage(ErrorMessages.SKU_ALREADY_EXISTS, { sku: dto.sku }),
+      );
     }
 
     const product = this.productRepository.create({
@@ -120,7 +131,9 @@ export class ProductsService {
     });
 
     if (!product) {
-      throw new NotFoundException(`Producto con id ${id} no encontrado`);
+      throw new NotFoundException(
+        formatErrorMessage(ErrorMessages.PRODUCT_NOT_FOUND, { id }),
+      );
     }
 
     return product;
@@ -129,8 +142,11 @@ export class ProductsService {
   async adjustStock(
     id: number,
     dto: AdjustStockDto,
-    manager?: EntityManager,
+    options?: AdjustStockOptions,
   ): Promise<Product> {
+    const manager = options?.manager;
+    const shouldEmit = options?.emitEvent ?? !manager;
+
     const execute = async (em: EntityManager): Promise<Product> => {
       const productRepo = em.getRepository(Product);
       const product = await productRepo.findOne({
@@ -139,20 +155,25 @@ export class ProductsService {
       });
 
       if (!product) {
-        throw new NotFoundException(`Producto con id ${id} no encontrado`);
+        throw new NotFoundException(
+        formatErrorMessage(ErrorMessages.PRODUCT_NOT_FOUND, { id }),
+      );
       }
 
       const stockBefore = product.stock;
-      const movementType = this.mapAdjustmentType(dto.type);
       const stockAfter =
-        movementType === MovementType.ENTRADA
+        dto.type === MovementType.ENTRADA
           ? stockBefore + dto.quantity
           : stockBefore - dto.quantity;
 
       if (stockAfter < 0) {
         const missing = dto.quantity - stockBefore;
         throw new BadRequestException(
-          `Stock insuficiente: disponible ${stockBefore}, solicitado ${dto.quantity}, faltan ${missing}`,
+          formatErrorMessage(ErrorMessages.INSUFFICIENT_STOCK, {
+            available: stockBefore,
+            requested: dto.quantity,
+            missing,
+          }),
         );
       }
 
@@ -162,7 +183,7 @@ export class ProductsService {
       await this.inventoryMovementsService.recordMovement(
         {
           productId: product.id,
-          type: movementType,
+          type: dto.type,
           quantity: dto.quantity,
           reason: dto.reason,
           stockBefore,
@@ -178,21 +199,19 @@ export class ProductsService {
       ? await execute(manager)
       : await this.dataSource.transaction(execute);
 
-    if (!manager) {
+    if (shouldEmit) {
       this.emitStockAdjusted(updatedProduct);
     }
 
     return updatedProduct;
   }
 
-  publishStockAdjusted(product: Product): void {
+  /**
+   * Emite stock.adjusted tras un commit externo (p. ej. recepción de orden).
+   * Usar solo cuando adjustStock se llamó con emitEvent: false.
+   */
+  emitStockAdjustedEvent(product: Product): void {
     this.emitStockAdjusted(product);
-  }
-
-  private mapAdjustmentType(type: StockAdjustmentType): MovementType {
-    return type === StockAdjustmentType.ENTRY
-      ? MovementType.ENTRADA
-      : MovementType.SALIDA;
   }
 
   private emitStockAdjusted(product: Product): void {

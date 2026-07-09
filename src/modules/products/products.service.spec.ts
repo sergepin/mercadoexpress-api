@@ -9,10 +9,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { InventoryMovementsService } from '../inventory-movements/inventory-movements.service';
 import { MovementType } from '../inventory-movements/entities/movement.entity';
-import { StockAdjustmentType } from './dto/adjust-stock.dto';
+import { STOCK_ADJUSTED_EVENT } from '../../common/events/stock-adjusted.event';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
-import { STOCK_ADJUSTED_EVENT } from './events/stock-adjusted.event';
 import { ProductsService } from './products.service';
 
 describe('ProductsService', () => {
@@ -211,7 +210,7 @@ describe('ProductsService', () => {
 
       await expect(
         service.adjustStock(1, {
-          type: StockAdjustmentType.EXIT,
+          type: MovementType.SALIDA,
           quantity: 15,
           reason: 'Venta',
         }),
@@ -235,7 +234,7 @@ describe('ProductsService', () => {
       inventoryMovementsService.recordMovement.mockResolvedValue({} as never);
 
       const result = await service.adjustStock(1, {
-        type: StockAdjustmentType.ENTRY,
+        type: MovementType.ENTRADA,
         quantity: 10,
         reason: 'Compra',
       });
