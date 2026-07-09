@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductsModule } from './modules/products/products.module';
@@ -13,7 +16,28 @@ import { AlertsService } from './modules/alerts.service';
 import { AlertsModule } from './modules/alerts/alerts.module';
 
 @Module({
-  imports: [ProductsModule, InventoryMovementsModule, AlertsModule, PurchaseOrdersModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST', 'localhost'),
+        port: config.get<number>('DB_PORT', 5432),
+        username: config.get<string>('DB_USER'),
+        password: config.get<string>('DB_PASSWORD'),
+        database: config.get<string>('DB_NAME'),
+        autoLoadEntities: true,
+        synchronize: false,
+      }),
+    }),
+    EventEmitterModule.forRoot(),
+    ProductsModule,
+    InventoryMovementsModule,
+    AlertsModule,
+    PurchaseOrdersModule,
+  ],
   controllers: [AppController, ProductsController, PurchaseOrdersController],
   providers: [AppService, ProductsService, InventoryMovementsService, AlertsService, PurchaseService],
 })
