@@ -85,12 +85,21 @@ npm run start:dev
 # Unitarios
 npm test
 
-# E2e (requiere BD accesible con las variables de .env)
+# E2e (requiere PostgreSQL accesible; usa BD separada inventory_db_test)
 npm run test:e2e
 
 # Cobertura
 npm run test:cov
 ```
+
+### Tests e2e
+
+Los e2e levantan la app Nest **en memoria** (sin puerto HTTP) y envían requests reales con Supertest. Usan la base `inventory_db_test`, nunca la de desarrollo (`inventory_db`). Antes de correr:
+
+1. Tener Postgres levantado (`docker-compose up db -d` o stack completo).
+2. Copiar `.env.example` → `.env`.
+
+El `global-setup` crea la BD de test si no existe, corre migraciones y cada suite resetea datos con el seed de referencia.
 
 ## Endpoints principales
 
