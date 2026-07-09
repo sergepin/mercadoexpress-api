@@ -13,7 +13,7 @@ import {
   StockAdjustedEvent,
 } from '../../common/events/stock-adjusted.event';
 import { normalizedTextEquals } from '../../common/utils/normalized-text-search';
-import { Alert, AlertStatus } from '../alerts/entities/alert.entity';
+import { AlertsService } from '../alerts/alerts.service';
 import { InventoryMovementsService } from '../inventory-movements/inventory-movements.service';
 import { MovementType } from '../inventory-movements/entities/movement.entity';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
@@ -35,6 +35,7 @@ export class ProductsService {
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
     private readonly inventoryMovementsService: InventoryMovementsService,
+    private readonly alertsService: AlertsService,
     private readonly dataSource: DataSource,
     private readonly eventEmitter: EventEmitter2,
   ) {}
@@ -83,6 +84,16 @@ export class ProductsService {
   }
 
   async findAll(filters: FilterProductsDto): Promise<Product[]> {
+    let activeAlertProductIds: number[] | undefined;
+
+    if (filters.withActiveAlert) {
+      activeAlertProductIds =
+        await this.alertsService.getActiveAlertProductIds();
+      if (activeAlertProductIds.length === 0) {
+        return [];
+      }
+    }
+
     const qb = this.productRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.category', 'category');
@@ -111,13 +122,10 @@ export class ProductsService {
       });
     }
 
-    if (filters.withActiveAlert) {
-      qb.innerJoin(
-        Alert,
-        'alert',
-        'alert.productId = product.id AND alert.status = :alertStatus',
-        { alertStatus: AlertStatus.ACTIVA },
-      );
+    if (activeAlertProductIds) {
+      qb.andWhere('product.id IN (:...productIds)', {
+        productIds: activeAlertProductIds,
+      });
     }
 
     return qb.getMany();
@@ -155,8 +163,8 @@ export class ProductsService {
 
       if (!product) {
         throw new NotFoundException(
-        formatErrorMessage(ErrorMessages.PRODUCT_NOT_FOUND, { id }),
-      );
+          formatErrorMessage(ErrorMessages.PRODUCT_NOT_FOUND, { id }),
+        );
       }
 
       const stockBefore = product.stock;

@@ -52,7 +52,7 @@ async function seed(): Promise<void> {
   const alertRepo = AppDataSource.getRepository(Alert);
 
   for (const product of savedProducts) {
-    if (product.stock < product.minStock) {
+    if (product.stock <= product.minStock) {
       await alertRepo.save(
         alertRepo.create({
           productId: product.id,

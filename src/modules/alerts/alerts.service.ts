@@ -1,10 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  STOCK_ADJUSTED_EVENT,
-  StockAdjustedEvent,
-} from '../../common/events/stock-adjusted.event';
+import { StockAdjustedEvent } from '../../common/events/stock-adjusted.event';
 import { FilterAlertsDto } from './dto/filter-alerts.dto';
 import { Alert, AlertStatus, AlertType } from './entities/alert.entity';
 
@@ -14,6 +11,15 @@ export class AlertsService {
     @InjectRepository(Alert)
     private readonly alertRepository: Repository<Alert>,
   ) {}
+
+  async getActiveAlertProductIds(): Promise<number[]> {
+    const rows = await this.alertRepository.find({
+      where: { status: AlertStatus.ACTIVA },
+      select: { productId: true },
+    });
+
+    return rows.map((row) => row.productId);
+  }
 
   async findAll(filters: FilterAlertsDto): Promise<Alert[]> {
     const qb = this.alertRepository

@@ -23,6 +23,7 @@ describe('AlertsService', () => {
     alertRepository = {
       createQueryBuilder: jest.fn(),
       findOne: jest.fn(),
+      find: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
     } as unknown as jest.Mocked<Repository<Alert>>;
@@ -35,6 +36,23 @@ describe('AlertsService', () => {
     }).compile();
 
     service = module.get<AlertsService>(AlertsService);
+  });
+
+  describe('getActiveAlertProductIds', () => {
+    it('retorna los productId de alertas activas', async () => {
+      alertRepository.find.mockResolvedValue([
+        { productId: 2 } as Alert,
+        { productId: 5 } as Alert,
+      ]);
+
+      const result = await service.getActiveAlertProductIds();
+
+      expect(alertRepository.find).toHaveBeenCalledWith({
+        where: { status: AlertStatus.ACTIVA },
+        select: { productId: true },
+      });
+      expect(result).toEqual([2, 5]);
+    });
   });
 
   describe('handleStockAdjusted', () => {

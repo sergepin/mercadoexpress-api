@@ -23,7 +23,6 @@ export class Product {
 
   @ManyToOne(() => Category, (category) => category.products, {
     nullable: false,
-    eager: true,
   })
   @JoinColumn({ name: 'category_id' })
   category: Category;

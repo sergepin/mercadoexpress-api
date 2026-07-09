@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AlertsModule } from '../alerts/alerts.module';
 import { InventoryMovementsModule } from '../inventory-movements/inventory-movements.module';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
@@ -10,6 +11,7 @@ import { ProductsService } from './products.service';
   imports: [
     TypeOrmModule.forFeature([Category, Product]),
     InventoryMovementsModule,
+    AlertsModule,
   ],
   controllers: [ProductsController],
   providers: [ProductsService],

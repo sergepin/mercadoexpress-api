@@ -10,6 +10,7 @@ import { DataSource, Repository } from 'typeorm';
 import { InventoryMovementsService } from '../inventory-movements/inventory-movements.service';
 import { MovementType } from '../inventory-movements/entities/movement.entity';
 import { STOCK_ADJUSTED_EVENT } from '../../common/events/stock-adjusted.event';
+import { AlertsService } from '../alerts/alerts.service';
 import { Category } from './entities/category.entity';
 import { Product } from './entities/product.entity';
 import { ProductsService } from './products.service';
@@ -19,6 +20,7 @@ describe('ProductsService', () => {
   let productRepository: jest.Mocked<Repository<Product>>;
   let categoryRepository: jest.Mocked<Repository<Category>>;
   let inventoryMovementsService: jest.Mocked<InventoryMovementsService>;
+  let alertsService: jest.Mocked<AlertsService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let dataSource: jest.Mocked<DataSource>;
 
@@ -58,6 +60,10 @@ describe('ProductsService', () => {
       recordMovement: jest.fn(),
     } as unknown as jest.Mocked<InventoryMovementsService>;
 
+    alertsService = {
+      getActiveAlertProductIds: jest.fn(),
+    } as unknown as jest.Mocked<AlertsService>;
+
     eventEmitter = {
       emit: jest.fn(),
     } as unknown as jest.Mocked<EventEmitter2>;
@@ -75,6 +81,7 @@ describe('ProductsService', () => {
           provide: InventoryMovementsService,
           useValue: inventoryMovementsService,
         },
+        { provide: AlertsService, useValue: alertsService },
         { provide: DataSource, useValue: dataSource },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
@@ -183,6 +190,33 @@ describe('ProductsService', () => {
         'unaccent(lower(trim(product.supplier))) = unaccent(lower(trim(:supplier)))',
         { supplier: 'LACTEOS DEL VALLE' },
       );
+    });
+
+    it('filtra productos con alerta activa vía AlertsService', async () => {
+      alertsService.getActiveAlertProductIds.mockResolvedValue([2, 5]);
+      const andWhere = jest.fn().mockReturnThis();
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        andWhere,
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      productRepository.createQueryBuilder.mockReturnValue(qb as never);
+
+      await service.findAll({ withActiveAlert: true });
+
+      expect(alertsService.getActiveAlertProductIds).toHaveBeenCalled();
+      expect(andWhere).toHaveBeenCalledWith('product.id IN (:...productIds)', {
+        productIds: [2, 5],
+      });
+    });
+
+    it('retorna vacío si no hay productos con alerta activa', async () => {
+      alertsService.getActiveAlertProductIds.mockResolvedValue([]);
+
+      const result = await service.findAll({ withActiveAlert: true });
+
+      expect(result).toEqual([]);
+      expect(productRepository.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 

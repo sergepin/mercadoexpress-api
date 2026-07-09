@@ -9,7 +9,10 @@ import {
   PURCHASE_ORDER_MIN_STOCK_MULTIPLIER,
 } from '../../common/constants/business.constants';
 import { ErrorMessages, formatErrorMessage } from '../../common/constants/error-messages';
-import { MovementReasons } from '../../common/constants/movement-reasons';
+import {
+  formatMovementReason,
+  MovementReasonTemplates,
+} from '../../common/constants/movement-reasons';
 import { Alert, AlertStatus } from '../alerts/entities/alert.entity';
 import { MovementType } from '../inventory-movements/entities/movement.entity';
 import { Product } from '../products/entities/product.entity';
@@ -20,6 +23,7 @@ import {
   PurchaseOrder,
   PurchaseOrderStatus,
 } from './entities/purchase-order.entity';
+import { PURCHASE_ORDER_TRANSITIONS } from './purchase-order.constants';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -116,14 +120,14 @@ export class PurchaseOrdersService {
   }
 
   async approve(id: number): Promise<PurchaseOrder> {
-    const order = await this.findOne(id);
+    const order = await this.findOrderOrFail(id);
     this.assertTransition(order.status, PurchaseOrderStatus.APROBADA);
     order.status = PurchaseOrderStatus.APROBADA;
     return this.purchaseOrderRepository.save(order);
   }
 
   async reject(id: number, dto: RejectPurchaseOrderDto): Promise<PurchaseOrder> {
-    const order = await this.findOne(id);
+    const order = await this.findOrderOrFail(id);
     this.assertTransition(order.status, PurchaseOrderStatus.RECHAZADA);
     order.status = PurchaseOrderStatus.RECHAZADA;
     order.rejectionReason = dto.reason;
@@ -141,8 +145,8 @@ export class PurchaseOrdersService {
 
         if (!order) {
           throw new NotFoundException(
-        formatErrorMessage(ErrorMessages.PURCHASE_ORDER_NOT_FOUND, { id }),
-      );
+            formatErrorMessage(ErrorMessages.PURCHASE_ORDER_NOT_FOUND, { id }),
+          );
         }
 
         this.assertTransition(order.status, PurchaseOrderStatus.RECIBIDA);
@@ -154,7 +158,10 @@ export class PurchaseOrdersService {
           {
             type: MovementType.ENTRADA,
             quantity: order.quantity,
-            reason: MovementReasons.purchaseOrderReceived(order.id),
+            reason: formatMovementReason(
+              MovementReasonTemplates.PURCHASE_ORDER_RECEIVED,
+              { orderId: order.id },
+            ),
           },
           { manager, emitEvent: false },
         );
@@ -167,21 +174,25 @@ export class PurchaseOrdersService {
     return order;
   }
 
+  private async findOrderOrFail(id: number): Promise<PurchaseOrder> {
+    const order = await this.purchaseOrderRepository.findOne({
+      where: { id },
+    });
+
+    if (!order) {
+      throw new NotFoundException(
+        formatErrorMessage(ErrorMessages.PURCHASE_ORDER_NOT_FOUND, { id }),
+      );
+    }
+
+    return order;
+  }
+
   private assertTransition(
     current: PurchaseOrderStatus,
     target: PurchaseOrderStatus,
   ): void {
-    const allowed: Record<PurchaseOrderStatus, PurchaseOrderStatus[]> = {
-      [PurchaseOrderStatus.PENDIENTE]: [
-        PurchaseOrderStatus.APROBADA,
-        PurchaseOrderStatus.RECHAZADA,
-      ],
-      [PurchaseOrderStatus.APROBADA]: [PurchaseOrderStatus.RECIBIDA],
-      [PurchaseOrderStatus.RECHAZADA]: [],
-      [PurchaseOrderStatus.RECIBIDA]: [],
-    };
-
-    if (!allowed[current].includes(target)) {
+    if (!PURCHASE_ORDER_TRANSITIONS[current].includes(target)) {
       throw new BadRequestException(
         formatErrorMessage(ErrorMessages.INVALID_STATUS_TRANSITION, {
           current,
