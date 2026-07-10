@@ -80,7 +80,7 @@ Trae variables `baseUrl` (local `http://localhost:3000`) y `baseUrlProd` (Cloud 
 
 Al subir el contenedor corren migraciones y seed: 6 categorías, 6 productos y 2 alertas activas (BEB002 y LAC002 empiezan bajo el mínimo).
 
-Si venís de un esquema viejo:
+Si ya tenías un esquema anterior:
 
 ```bash
 docker-compose down -v && docker-compose up --build
@@ -99,7 +99,7 @@ npm run seed
 npm run start:dev
 ```
 
-Front en local: API en `:3000`, Next en `:3001`, y `FRONTEND_ORIGIN=http://localhost:3001` en el `.env` de acá. Más detalle en el [README del web](https://github.com/sergepin/mercadoexpress-web).
+Front en local: API en `:3000`, Next en `:3001`, y `FRONTEND_ORIGIN=http://localhost:3001` en el `.env` de este repo. Más detalle en el [README del web](https://github.com/sergepin/mercadoexpress-web).
 
 ## Tests
 
