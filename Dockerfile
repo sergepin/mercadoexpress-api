@@ -23,7 +23,9 @@ COPY --from=builder /app/dist ./dist
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
-# Cloud Run inyecta PORT; 8080 es el default habitual
+# Cloud Run inyecta PORT (por defecto 8080)
 EXPOSE 8080
 
-CMD ["./docker-entrypoint.sh"]
+# Arranca la API de inmediato (Cloud Run exige escuchar PORT rápido).
+# Migraciones: correrlas una vez contra Neon desde tu PC, no aquí.
+CMD ["node", "dist/main.js"]

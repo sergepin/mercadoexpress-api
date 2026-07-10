@@ -138,7 +138,9 @@ Ver [`.env.example`](.env.example):
 postgresql://USER:PASSWORD@HOST/neondb?sslmode=require
 ```
 
-### 2. Preparar la BD (una vez, desde tu máquina)
+### 2. Preparar la BD (una vez, desde tu máquina) — obligatorio
+
+Cloud Run **no** corre migraciones al arrancar (si lo hace, el contenedor no alcanza a abrir el puerto a tiempo y falla con el error de `PORT=8080`).
 
 ```bash
 npm run build
@@ -146,30 +148,27 @@ DATABASE_URL="postgresql://...?sslmode=require" npm run migration:run
 DATABASE_URL="postgresql://...?sslmode=require" npm run seed
 ```
 
-(El contenedor también corre migraciones + seed al arrancar; hacerlo antes evita el primer cold start fallido.)
+### 3. Cloud Run — variables (obligatorio)
 
-### 3. Cloud Run — variables
+Sin `DATABASE_URL`, Nest intenta conectar a `localhost` y el proceso se cae **antes** de escuchar el puerto → mismo error de Cloud Run.
 
-En el servicio de Cloud Run configura al menos:
+En el servicio: **Edit & deploy new revision → Variables & secrets**:
 
 | Variable | Valor |
 |----------|--------|
-| `DATABASE_URL` | Connection string de Neon (`sslmode=require`) |
+| `DATABASE_URL` | Connection string de Neon (`sslmode=require`, sin `channel_binding`) |
 | `NODE_ENV` | `production` |
 
-Cloud Run inyecta `PORT` solo; no hace falta definirlo.
+Cloud Run inyecta `PORT=8080` solo; no hace falta definirlo.
 
 ### 4. Build y deploy (ejemplo)
 
 ```bash
-# Autenticación y proyecto GCP
 gcloud auth login
 gcloud config set project TU_PROJECT_ID
 
-# Build de la imagen y push a Artifact Registry / GCR
 gcloud builds submit --tag gcr.io/TU_PROJECT_ID/mercadoexpress-api
 
-# Deploy
 gcloud run deploy mercadoexpress-api \
   --image gcr.io/TU_PROJECT_ID/mercadoexpress-api \
   --region us-east1 \
@@ -177,14 +176,26 @@ gcloud run deploy mercadoexpress-api \
   --set-env-vars "DATABASE_URL=postgresql://...?sslmode=require"
 ```
 
-Mejor práctica: guardar `DATABASE_URL` en **Secret Manager** y referenciarlo con `--set-secrets`, no en texto plano en el comando.
+Mejor práctica: Secret Manager + `--set-secrets`, no password en texto plano.
 
 ### 5. Verificar
 
 ```
 GET https://TU-SERVICIO.run.app/health
-GET https://TU-SERVICIO.run.app/api   # Swagger
+GET https://TU-SERVICIO.run.app/api
 ```
+
+### Si falla: "failed to start and listen on PORT=8080"
+
+Eso **casi nunca** es el puerto en el código (ya usamos `process.env.PORT` y `0.0.0.0`). Significa que la app se cayó antes de abrir el puerto.
+
+1. Abre el **Logs URL** del error.
+2. Busca líneas con `Error`, `ECONNREFUSED`, `password authentication`, `DATABASE_URL`, `Cannot connect`.
+3. Causas típicas:
+   - Falta `DATABASE_URL` en Cloud Run
+   - URL con `channel_binding=require` (quítalo)
+   - Tablas no creadas → corre `migration:run` desde tu PC
+   - Password de Neon incorrecta / rotada
 
 ## Licencia
 
