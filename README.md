@@ -72,6 +72,12 @@ docker-compose up --build
 | Health | `GET http://localhost:3000/health` |
 | Swagger | `http://localhost:3000/api` |
 
+### Colección Postman
+
+Para probar los endpoints sin armar requests a mano, hay una colección en [`docs/MercadoExpress.postman_collection.json`](docs/MercadoExpress.postman_collection.json).
+
+Trae variables `baseUrl` (local `http://localhost:3000`) y `baseUrlProd` (Cloud Run). Cubre productos, stock, alertas y órdenes.
+
 Al subir el contenedor corren migraciones y seed: 6 categorías, 6 productos y 2 alertas activas (BEB002 y LAC002 empiezan bajo el mínimo).
 
 Si venís de un esquema viejo:
