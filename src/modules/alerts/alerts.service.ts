@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  ALERT_CREATED_EVENT,
+  ALERT_RESOLVED_EVENT,
+  AlertLifecycleEvent,
+} from '../../common/events/alert-lifecycle.event';
 import { StockAdjustedEvent } from '../../common/events/stock-adjusted.event';
 import { FilterAlertsDto } from './dto/filter-alerts.dto';
 import { Alert, AlertStatus, AlertType } from './entities/alert.entity';
@@ -10,6 +16,7 @@ export class AlertsService {
   constructor(
     @InjectRepository(Alert)
     private readonly alertRepository: Repository<Alert>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async getActiveAlertProductIds(): Promise<number[]> {
@@ -58,7 +65,11 @@ export class AlertsService {
       resolvedAt: null,
     });
 
-    await this.alertRepository.save(alert);
+    const saved = await this.alertRepository.save(alert);
+    this.eventEmitter.emit(
+      ALERT_CREATED_EVENT,
+      new AlertLifecycleEvent(saved),
+    );
   }
 
   private async resolveActiveAlert(productId: number): Promise<void> {
@@ -70,7 +81,11 @@ export class AlertsService {
 
     existing.status = AlertStatus.RESUELTA;
     existing.resolvedAt = new Date();
-    await this.alertRepository.save(existing);
+    const saved = await this.alertRepository.save(existing);
+    this.eventEmitter.emit(
+      ALERT_RESOLVED_EVENT,
+      new AlertLifecycleEvent(saved),
+    );
   }
 
   private async findActiveAlert(productId: number): Promise<Alert | null> {

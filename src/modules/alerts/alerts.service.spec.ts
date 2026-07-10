@@ -1,6 +1,11 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  ALERT_CREATED_EVENT,
+  ALERT_RESOLVED_EVENT,
+} from '../../common/events/alert-lifecycle.event';
 import { StockAdjustedEvent } from '../../common/events/stock-adjusted.event';
 import { AlertsService } from './alerts.service';
 import { Alert, AlertStatus, AlertType } from './entities/alert.entity';
@@ -8,6 +13,7 @@ import { Alert, AlertStatus, AlertType } from './entities/alert.entity';
 describe('AlertsService', () => {
   let service: AlertsService;
   let alertRepository: jest.Mocked<Repository<Alert>>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
 
   const activeAlert: Alert = {
     id: 1,
@@ -28,10 +34,15 @@ describe('AlertsService', () => {
       save: jest.fn(),
     } as unknown as jest.Mocked<Repository<Alert>>;
 
+    eventEmitter = {
+      emit: jest.fn(),
+    } as unknown as jest.Mocked<EventEmitter2>;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertsService,
         { provide: getRepositoryToken(Alert), useValue: alertRepository },
+        { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
 
@@ -56,7 +67,7 @@ describe('AlertsService', () => {
   });
 
   describe('handleStockAdjusted', () => {
-    it('crea alerta ACTIVA cuando el stock queda en o bajo el mínimo (RN-03)', async () => {
+    it('crea alerta ACTIVA y emite alert.created (RN-03)', async () => {
       alertRepository.findOne.mockResolvedValue(null);
       alertRepository.create.mockReturnValue(activeAlert);
       alertRepository.save.mockResolvedValue(activeAlert);
@@ -70,6 +81,10 @@ describe('AlertsService', () => {
         resolvedAt: null,
       });
       expect(alertRepository.save).toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        ALERT_CREATED_EVENT,
+        expect.objectContaining({ alert: activeAlert }),
+      );
     });
 
     it('no duplica alerta si ya existe una activa (RN-04)', async () => {
@@ -79,9 +94,10 @@ describe('AlertsService', () => {
 
       expect(alertRepository.create).not.toHaveBeenCalled();
       expect(alertRepository.save).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
-    it('resuelve alerta activa cuando el stock supera el mínimo (RN-05)', async () => {
+    it('resuelve alerta activa y emite alert.resolved (RN-05)', async () => {
       alertRepository.findOne.mockResolvedValue({ ...activeAlert });
       alertRepository.save.mockImplementation(async (alert) => alert as Alert);
 
@@ -93,6 +109,12 @@ describe('AlertsService', () => {
           resolvedAt: expect.any(Date),
         }),
       );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        ALERT_RESOLVED_EVENT,
+        expect.objectContaining({
+          alert: expect.objectContaining({ status: AlertStatus.RESUELTA }),
+        }),
+      );
     });
 
     it('no hace nada al subir stock si no hay alerta activa', async () => {
@@ -101,6 +123,7 @@ describe('AlertsService', () => {
       await service.handleStockAdjusted(new StockAdjustedEvent(10, 50, 30));
 
       expect(alertRepository.save).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
   });
 });

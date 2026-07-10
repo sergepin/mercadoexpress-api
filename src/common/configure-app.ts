@@ -10,6 +10,13 @@ export function configureApp(
   app: INestApplication,
   options: ConfigureAppOptions = {},
 ): void {
+  app.enableCors({
+    origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3001',
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

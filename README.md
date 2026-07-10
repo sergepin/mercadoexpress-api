@@ -16,6 +16,8 @@ Controla stock de productos, genera alertas automáticas de stock bajo, registra
 Para producción se eligió **Google Cloud Run** (API) + **Neon** (PostgreSQL managed).  
 Guía completa: [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
 
+El frontend vive en un **repo aparte** (`mercadoexpress-web`, Next.js). El API expone CORS (`FRONTEND_ORIGIN`) y un stream SSE en `GET /alerts/stream` para notificaciones en vivo.
+
 ## Arquitectura
 
 Se eligió una **arquitectura modular en capas** (Controller → Service → Entity/Repository), pragmática para el timebox de la prueba. No se adoptó hexagonal/DDD puro: la prioridad es cubrir reglas de negocio y tests, no abstracción máxima.

@@ -1,3 +1,4 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AlertsController } from './alerts.controller';
 import { AlertsService } from './alerts.service';
@@ -12,6 +13,10 @@ describe('AlertsController', () => {
         {
           provide: AlertsService,
           useValue: { findAll: jest.fn() },
+        },
+        {
+          provide: EventEmitter2,
+          useValue: { on: jest.fn(), off: jest.fn() },
         },
       ],
     }).compile();
