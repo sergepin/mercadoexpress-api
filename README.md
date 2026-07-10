@@ -1,82 +1,88 @@
 # MercadoExpress API
 
-API REST para el sistema de gestión de inventario de MercadoExpress — prueba técnica.
+API REST de inventario para MercadoExpress. Prueba técnica: backend claro, testeable y fácil de levantar.
 
-Controla stock de productos, genera alertas automáticas de stock bajo, registra movimientos inmutables y gestiona órdenes de compra a proveedores.
+Controla productos y stock, genera alertas cuando el inventario baja del mínimo, guarda un historial de movimientos que no se edita ni se borra, y maneja órdenes de compra de punta a punta. Para usarlo con interfaz gráfica está el frontend en otro repo.
 
-## Stack
+## En vivo
 
-- **NestJS** + TypeScript
-- **PostgreSQL** + TypeORM
-- **Docker** + docker-compose
-- Validación con `class-validator`, eventos con `@nestjs/event-emitter`, documentación con Swagger
+| Qué | Dónde |
+|-----|--------|
+| Frontend | [mercadoexpress-web.vercel.app](https://mercadoexpress-web.vercel.app) |
+| Código del frontend | [github.com/sergepin/mercadoexpress-web](https://github.com/sergepin/mercadoexpress-web) |
+| API | `https://mercadoexpress-api-205454922130.southamerica-west1.run.app` |
+| Swagger en local | `http://localhost:3000/api` |
 
-### Deploy en producción
+## Qué usé y por qué
 
-Para producción se eligió **Google Cloud Run** (API) + **Neon** (PostgreSQL managed).  
-Guía completa: [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
+**En el servidor**
 
-El frontend vive en un **repo aparte** (`mercadoexpress-web`, Next.js). El API expone CORS (`FRONTEND_ORIGIN`) y un stream SSE en `GET /alerts/stream` para notificaciones en vivo.
+- NestJS y TypeScript, porque organizan bien módulos, controllers y services sin inventar la rueda.
+- PostgreSQL con TypeORM: el dominio es tablas relacionadas (productos, movimientos, alertas, órdenes) y necesito migraciones y transacciones de verdad.
+- Docker Compose para que cualquiera pueda subir API y base con un solo comando.
+- class-validator en los DTOs, event-emitter para las alertas, Swagger para documentar lo que el código ya declara.
 
-## Arquitectura
+**En producción**
 
-Se eligió una **arquitectura modular en capas** (Controller → Service → Entity/Repository), pragmática para el timebox de la prueba. No se adoptó hexagonal/DDD puro: la prioridad es cubrir reglas de negocio y tests, no abstracción máxima.
+- Google Cloud Run: corro el contenedor, me olvido de VMs y el `PORT` viene solo. Para esta API alcanza.
+- Neon: Postgres en la nube con SSL. Connection string, listo. Menos ops, más foco en el negocio.
+
+**En el cliente**
+
+- Next.js (App Router) en [mercadoexpress-web](https://github.com/sergepin/mercadoexpress-web), publicado en Vercel: [mercadoexpress-web.vercel.app](https://mercadoexpress-web.vercel.app).
+- Consume el REST de este API y escucha alertas en vivo con SSE (`GET /alerts/stream`).
+
+Cómo desplegar Cloud Run + Neon: [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
+
+## Cómo está armado
+
+Cada feature vive en su módulo. El HTTP entra por el controller, la regla de negocio está en el service, y TypeORM habla con la base. Así puedo testear el service sin montar el servidor.
 
 ```
 src/
   modules/
-    products/              RF-01 — registro y ajuste de stock
-    inventory-movements/   RF-02 — historial inmutable
-    alerts/                RF-03 — alertas reactivas vía eventos
-    purchase-orders/       RF-04/05 — ciclo de vida de órdenes
-  common/                  filtros, constantes, utilidades
-  database/                migraciones, seed, data-source
+    products/              productos y ajuste de stock
+    inventory-movements/   historial de movimientos
+    alerts/                alertas de stock bajo
+    purchase-orders/       órdenes de compra
+  common/                  errores, eventos, CORS, utilidades
+  database/                migraciones y seed
 ```
 
-**Desacoplamiento de alertas:** `ProductsService` emite el evento `stock.adjusted` al ajustar stock. `AlertsListener` reacciona sin que products importe alerts directamente en la lógica de negocio.
+Cuando cambia el stock, `ProductsService` emite `stock.adjusted`. Alerts escucha ese evento y crea o cierra la alerta. Products no conoce Alerts: si mañana cambia cómo se notifican las alertas, el ajuste de stock sigue igual. Al recibir una orden se reutiliza el mismo `adjustStock`, así que el flujo de alertas también.
 
-**Transacciones:** operaciones multi-tabla (ajuste + movimiento, recepción de orden + stock) usan transacciones TypeORM.
+Para el front hay eventos más finos (`alert.created`, `alert.resolved`) que salen por SSE. El navegador solo se entera cuando de verdad hubo una alerta nueva o una resuelta.
 
-Detalle de cumplimiento por RF: [`docs/requisitos-funcionales.md`](docs/requisitos-funcionales.md).
+Las operaciones que tocan más de una tabla (stock + movimiento, o recibir orden + stock) van en una transacción. Prefiero un error limpio a datos a medias.
 
-## Requisitos previos
+El frontend está en otro repositorio a propósito. Este repo es el API; el otro es la UI. Deploys distintos (Cloud Run vs Vercel), stacks distintos, y CORS con `FRONTEND_ORIGIN` bien explícito.
 
-- [Docker](https://docs.docker.com/get-docker/) y Docker Compose
+Cumplimiento de requisitos: [`docs/requisitos-funcionales.md`](docs/requisitos-funcionales.md).
 
-No hace falta instalar Node ni PostgreSQL localmente para evaluar el proyecto.
-
-## Inicio rápido (Docker)
+## Arrancar con Docker
 
 ```bash
-# 1. Copiar variables de entorno
 cp .env.example .env
-
-# 2. Levantar API + PostgreSQL (migraciones y seed automáticos)
 docker-compose up --build
 ```
 
-La API queda disponible en `http://localhost:3000`.
-
 | Recurso | URL |
 |---------|-----|
-| Health check | `GET http://localhost:3000/health` |
+| Health | `GET http://localhost:3000/health` |
 | Swagger | `http://localhost:3000/api` |
 
-### Datos semilla
+Al subir el contenedor corren migraciones y seed: 6 categorías, 6 productos y 2 alertas activas (BEB002 y LAC002 empiezan bajo el mínimo).
 
-Al arrancar el contenedor se ejecutan migraciones y seed. Se crean 6 categorías, 6 productos y 2 alertas activas (BEB002 y LAC002 nacen con stock ≤ mínimo).
-
-Si ya corriste una versión anterior del esquema, recrea el volumen:
+Si venís de un esquema viejo:
 
 ```bash
 docker-compose down -v && docker-compose up --build
 ```
 
-## Desarrollo local (sin Docker para la API)
+## API en local (solo la BD en Docker)
 
 ```bash
 cp .env.example .env
-# Levantar solo la BD:
 docker-compose up db -d
 
 npm install
@@ -86,54 +92,42 @@ npm run seed
 npm run start:dev
 ```
 
+Front en local: API en `:3000`, Next en `:3001`, y `FRONTEND_ORIGIN=http://localhost:3001` en el `.env` de acá. Más detalle en el [README del web](https://github.com/sergepin/mercadoexpress-web).
+
 ## Tests
 
 ```bash
-# Unitarios
 npm test
-
-# E2e (requiere PostgreSQL accesible; usa BD separada inventory_db_test)
 npm run test:e2e
-
-# Cobertura
 npm run test:cov
 ```
 
-### Tests e2e
+Los e2e usan Supertest contra Nest en memoria y una base `inventory_db_test`, nunca la de desarrollo. El setup crea esa BD, migra y cada suite vuelve al seed.
 
-Los e2e levantan la app Nest **en memoria** (sin puerto HTTP) y envían requests reales con Supertest. Usan la base `inventory_db_test`, nunca la de desarrollo (`inventory_db`). Antes de correr:
-
-1. Tener Postgres levantado (`docker-compose up db -d` o stack completo).
-2. Copiar `.env.example` → `.env`.
-
-El `global-setup` crea la BD de test si no existe, corre migraciones y cada suite resetea datos con el seed de referencia.
-
-## Endpoints principales
+## Endpoints
 
 | Módulo | Rutas |
 |--------|-------|
 | Productos | `POST/GET /products`, `GET /products/:id`, `PATCH /products/:id/stock` |
-| Alertas | `GET /alerts?status=ACTIVA\|RESUELTA` |
+| Alertas | `GET /alerts`, `GET /alerts/stream` (SSE) |
 | Órdenes | `POST/GET /purchase-orders`, `PATCH .../approve\|reject\|receive` |
 | Health | `GET /health` |
 
-Filtros de productos (`GET /products`): `category`, `supplier`, `minStock`, `maxStock`, `withActiveAlert`. Los filtros de texto son insensibles a mayúsculas y acentos.
+Filtros en productos: `category`, `supplier`, `minStock`, `maxStock`, `withActiveAlert`. Categoría y proveedor no distinguen mayúsculas ni acentos.
 
 ## Variables de entorno
 
-Ver [`.env.example`](.env.example):
+Ver [`.env.example`](.env.example).
 
-| Variable | Descripción |
-|----------|-------------|
-| `DB_HOST` | Host de PostgreSQL |
-| `DB_PORT` | Puerto (5432) |
-| `DB_USER` | Usuario |
-| `DB_PASSWORD` | Contraseña |
-| `DB_NAME` | Nombre de la base |
-| `PORT` | Puerto del API (local 3000) |
+| Variable | Uso |
+|----------|-----|
+| `DB_*` | Postgres local / docker-compose |
+| `PORT` | En local 3000; en Cloud Run lo pone la plataforma |
+| `FRONTEND_ORIGIN` | Origen CORS (`:3001` o la URL de Vercel) |
+| `DATABASE_URL` / `DB_SSL` | Neon en producción |
 
-Variables adicionales para producción (`DATABASE_URL`, `DB_SSL`, etc.): ver [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
+Más en [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
 
 ## Licencia
 
-Proyecto de prueba técnica — UNLICENSED.
+Prueba técnica. UNLICENSED.
