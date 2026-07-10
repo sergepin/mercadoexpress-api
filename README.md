@@ -1,8 +1,8 @@
 # MercadoExpress API
 
-API REST de inventario para MercadoExpress. Prueba técnica: backend claro, testeable y fácil de levantar.
+API REST de inventario para MercadoExpress. Prueba técnica: backend claro, testeable y fácil de levantar
 
-Controla productos y stock, genera alertas cuando el inventario baja del mínimo, guarda un historial de movimientos que no se edita ni se borra, y maneja órdenes de compra de punta a punta. Para usarlo con interfaz gráfica está el frontend en otro repo.
+Controla productos y stock, genera alertas cuando el inventario baja del mínimo, guarda un historial de movimientos que no se edita ni se borra, y maneja órdenes de compra de punta a punta. Para usarlo con interfaz gráfica está el frontend en otro repo
 
 ## En vivo
 
@@ -11,25 +11,26 @@ Controla productos y stock, genera alertas cuando el inventario baja del mínimo
 | Frontend | [mercadoexpress-web.vercel.app](https://mercadoexpress-web.vercel.app) |
 | Código del frontend | [github.com/sergepin/mercadoexpress-web](https://github.com/sergepin/mercadoexpress-web) |
 | API | `https://mercadoexpress-api-205454922130.southamerica-west1.run.app` |
-| Swagger en local | `http://localhost:3000/api` |
+| Swagger Docs | `https://mercadoexpress-api-205454922130.southamerica-west1.run.app/api` |
 
 ## Qué usé y por qué
 
 **En el servidor**
 
-- NestJS y TypeScript, porque organizan bien módulos, controllers y services sin inventar la rueda.
-- PostgreSQL con TypeORM: el dominio es tablas relacionadas (productos, movimientos, alertas, órdenes) y necesito migraciones y transacciones de verdad.
-- Docker Compose para que cualquiera pueda subir API y base con un solo comando.
-- class-validator en los DTOs, event-emitter para las alertas, Swagger para documentar lo que el código ya declara.
+- NestJS y TypeScript, organizan bien módulos, controllers y services sin inventar la rueda de nuevo
+- PostgreSQL con TypeORM: el dominio es tablas relacionadas (productos, movimientos, alertas, órdenes) y necesito migraciones y transacciones
+- Docker Compose para que cualquiera pueda subir API y DB con un solo comando
+- class-validator en los DTOs, event-emitter para las alertas, Swagger para documentar
 
 **En producción**
 
-- Google Cloud Run: corro el contenedor, me olvido de VMs y el `PORT` viene solo. Para esta API alcanza.
-- Neon: Postgres en la nube con SSL. Connection string, listo. Menos ops, más foco en el negocio.
+- Google Cloud Run: corro el contenedor, me olvido de VMs y el `PORT` viene solo, con tal de mantenerlo sencillo
+
+- Neon: Postgres en la nube con SSL
 
 **En el cliente**
 
-- Next.js (App Router) en [mercadoexpress-web](https://github.com/sergepin/mercadoexpress-web), publicado en Vercel: [mercadoexpress-web.vercel.app](https://mercadoexpress-web.vercel.app).
+- Next.js en [mercadoexpress-web](https://github.com/sergepin/mercadoexpress-web), publicado en Vercel: [mercadoexpress-web.vercel.app](https://mercadoexpress-web.vercel.app).
 - Consume el REST de este API y escucha alertas en vivo con SSE (`GET /alerts/stream`).
 
 Cómo desplegar Cloud Run + Neon: [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
@@ -127,6 +128,21 @@ Ver [`.env.example`](.env.example).
 | `DATABASE_URL` / `DB_SSL` | Neon en producción |
 
 Más en [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
+
+## Uso de IA en el desarrollo
+
+Trabajé de la mano con **Cursor** durante gran parte del proyecto. No como piloto automático que escribe todo solo, de forma simirlar a tener un compañero haciendo pair programming: yo defino el rumbo, reviso y decido; la IA acelera implementación, búsqueda de code smells y pulido de calidad
+
+Para que no inventara arquitectura ni se saliera de las reglas del enunciado, usé **Cursor Rules** (`.cursor/rules/`). Ahí quedó escrito el overview del proyecto, cómo está armado el código, las reglas de negocio (RN) y el contrato del API. Con eso la IA mantiene el mismo estilo, respeta las validaciones y no propone stacks o capas que no pedí
+
+En la práctica me sirvió para:
+
+- Detectar code smells y inconsistencias (mensajes de error, imports muertos, seed vs reglas de negocio, etc.)
+- Mejoras de calidad útiles (constantes, CORS, SSE, tests)
+- Documentación y handoffs sin perder el hilo del dominio
+- Iterar más rápido en Docker, Cloud Run y el cableado con el frontend
+
+La responsabilidad del diseño y de lo que entra al repo sigue siendo mía. Las rules son el contrato con la herramienta: mismos lineamientos en cada chat, menos alucinaciones y/o desviaciones de la meta
 
 ## Licencia
 
