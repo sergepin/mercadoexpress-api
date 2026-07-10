@@ -11,6 +11,11 @@ Controla stock de productos, genera alertas automáticas de stock bajo, registra
 - **Docker** + docker-compose
 - Validación con `class-validator`, eventos con `@nestjs/event-emitter`, documentación con Swagger
 
+### Deploy en producción
+
+Para producción se eligió **Google Cloud Run** (API) + **Neon** (PostgreSQL managed).  
+Guía completa: [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
+
 ## Arquitectura
 
 Se eligió una **arquitectura modular en capas** (Controller → Service → Entity/Repository), pragmática para el timebox de la prueba. No se adoptó hexagonal/DDD puro: la prioridad es cubrir reglas de negocio y tests, no abstracción máxima.
@@ -118,84 +123,14 @@ Ver [`.env.example`](.env.example):
 
 | Variable | Descripción |
 |----------|-------------|
-| `DATABASE_URL` | Connection string completa (recomendado en Neon/Cloud Run) |
-| `DB_HOST` | Host de PostgreSQL (si no usas `DATABASE_URL`) |
+| `DB_HOST` | Host de PostgreSQL |
 | `DB_PORT` | Puerto (5432) |
 | `DB_USER` | Usuario |
 | `DB_PASSWORD` | Contraseña |
 | `DB_NAME` | Nombre de la base |
-| `DB_SSL` | `true` para Neon/Cloud SQL cuando usas variables sueltas |
-| `PORT` | Puerto del API (Cloud Run lo inyecta; local 3000) |
+| `PORT` | Puerto del API (local 3000) |
 
-## Deploy: Cloud Run + Neon
-
-### 1. Neon
-
-1. Crea el proyecto en Neon.
-2. Copia la connection string **pooled** y quita `channel_binding=require` si aparece (puede dar problemas con `pg`). Déjala así:
-
-```
-postgresql://USER:PASSWORD@HOST/neondb?sslmode=require
-```
-
-### 2. Preparar la BD (una vez, desde tu máquina) — obligatorio
-
-Cloud Run **no** corre migraciones al arrancar (si lo hace, el contenedor no alcanza a abrir el puerto a tiempo y falla con el error de `PORT=8080`).
-
-```bash
-npm run build
-DATABASE_URL="postgresql://...?sslmode=require" npm run migration:run
-DATABASE_URL="postgresql://...?sslmode=require" npm run seed
-```
-
-### 3. Cloud Run — variables (obligatorio)
-
-Sin `DATABASE_URL`, Nest intenta conectar a `localhost` y el proceso se cae **antes** de escuchar el puerto → mismo error de Cloud Run.
-
-En el servicio: **Edit & deploy new revision → Variables & secrets**:
-
-| Variable | Valor |
-|----------|--------|
-| `DATABASE_URL` | Connection string de Neon (`sslmode=require`, sin `channel_binding`) |
-| `NODE_ENV` | `production` |
-
-Cloud Run inyecta `PORT=8080` solo; no hace falta definirlo.
-
-### 4. Build y deploy (ejemplo)
-
-```bash
-gcloud auth login
-gcloud config set project TU_PROJECT_ID
-
-gcloud builds submit --tag gcr.io/TU_PROJECT_ID/mercadoexpress-api
-
-gcloud run deploy mercadoexpress-api \
-  --image gcr.io/TU_PROJECT_ID/mercadoexpress-api \
-  --region us-east1 \
-  --allow-unauthenticated \
-  --set-env-vars "DATABASE_URL=postgresql://...?sslmode=require"
-```
-
-Mejor práctica: Secret Manager + `--set-secrets`, no password en texto plano.
-
-### 5. Verificar
-
-```
-GET https://TU-SERVICIO.run.app/health
-GET https://TU-SERVICIO.run.app/api
-```
-
-### Si falla: "failed to start and listen on PORT=8080"
-
-Eso **casi nunca** es el puerto en el código (ya usamos `process.env.PORT` y `0.0.0.0`). Significa que la app se cayó antes de abrir el puerto.
-
-1. Abre el **Logs URL** del error.
-2. Busca líneas con `Error`, `ECONNREFUSED`, `password authentication`, `DATABASE_URL`, `Cannot connect`.
-3. Causas típicas:
-   - Falta `DATABASE_URL` en Cloud Run
-   - URL con `channel_binding=require` (quítalo)
-   - Tablas no creadas → corre `migration:run` desde tu PC
-   - Password de Neon incorrecta / rotada
+Variables adicionales para producción (`DATABASE_URL`, `DB_SSL`, etc.): ver [`docs/deploy-cloud-run-neon.md`](docs/deploy-cloud-run-neon.md).
 
 ## Licencia
 
