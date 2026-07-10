@@ -118,12 +118,73 @@ Ver [`.env.example`](.env.example):
 
 | Variable | Descripción |
 |----------|-------------|
-| `DB_HOST` | Host de PostgreSQL |
+| `DATABASE_URL` | Connection string completa (recomendado en Neon/Cloud Run) |
+| `DB_HOST` | Host de PostgreSQL (si no usas `DATABASE_URL`) |
 | `DB_PORT` | Puerto (5432) |
 | `DB_USER` | Usuario |
 | `DB_PASSWORD` | Contraseña |
 | `DB_NAME` | Nombre de la base |
-| `PORT` | Puerto del API (3000) |
+| `DB_SSL` | `true` para Neon/Cloud SQL cuando usas variables sueltas |
+| `PORT` | Puerto del API (Cloud Run lo inyecta; local 3000) |
+
+## Deploy: Cloud Run + Neon
+
+### 1. Neon
+
+1. Crea el proyecto en Neon.
+2. Copia la connection string **pooled** y quita `channel_binding=require` si aparece (puede dar problemas con `pg`). Déjala así:
+
+```
+postgresql://USER:PASSWORD@HOST/neondb?sslmode=require
+```
+
+### 2. Preparar la BD (una vez, desde tu máquina)
+
+```bash
+npm run build
+DATABASE_URL="postgresql://...?sslmode=require" npm run migration:run
+DATABASE_URL="postgresql://...?sslmode=require" npm run seed
+```
+
+(El contenedor también corre migraciones + seed al arrancar; hacerlo antes evita el primer cold start fallido.)
+
+### 3. Cloud Run — variables
+
+En el servicio de Cloud Run configura al menos:
+
+| Variable | Valor |
+|----------|--------|
+| `DATABASE_URL` | Connection string de Neon (`sslmode=require`) |
+| `NODE_ENV` | `production` |
+
+Cloud Run inyecta `PORT` solo; no hace falta definirlo.
+
+### 4. Build y deploy (ejemplo)
+
+```bash
+# Autenticación y proyecto GCP
+gcloud auth login
+gcloud config set project TU_PROJECT_ID
+
+# Build de la imagen y push a Artifact Registry / GCR
+gcloud builds submit --tag gcr.io/TU_PROJECT_ID/mercadoexpress-api
+
+# Deploy
+gcloud run deploy mercadoexpress-api \
+  --image gcr.io/TU_PROJECT_ID/mercadoexpress-api \
+  --region us-east1 \
+  --allow-unauthenticated \
+  --set-env-vars "DATABASE_URL=postgresql://...?sslmode=require"
+```
+
+Mejor práctica: guardar `DATABASE_URL` en **Secret Manager** y referenciarlo con `--set-secrets`, no en texto plano en el comando.
+
+### 5. Verificar
+
+```
+GET https://TU-SERVICIO.run.app/health
+GET https://TU-SERVICIO.run.app/api   # Swagger
+```
 
 ## Licencia
 

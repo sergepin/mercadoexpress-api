@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
+import { buildTypeOrmOptions } from './database/typeorm.config';
 import { ProductsModule } from './modules/products/products.module';
 import { InventoryMovementsModule } from './modules/inventory-movements/inventory-movements.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
@@ -15,14 +16,8 @@ import { PurchaseOrdersModule } from './modules/purchase-orders/purchase-orders.
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get<string>('DB_USER'),
-        password: config.get<string>('DB_PASSWORD'),
-        database: config.get<string>('DB_NAME'),
+        ...buildTypeOrmOptions(config),
         autoLoadEntities: true,
-        synchronize: false,
       }),
     }),
     EventEmitterModule.forRoot(),
