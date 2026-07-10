@@ -1,0 +1,461 @@
+{
+  "info": {
+    "_postman_id": "d64c06dc-d353-4b24-a129-b9dd1bfd14dd",
+    "name": "MercadoExpress",
+    "description": "Colección de endpoints para la API de MercadoExpress.\n\nLas URLs base están configuradas como variables de colección:\n\n- `{{baseUrl}}` → `http://localhost:3000` (desarrollo local)\n    \n- `{{baseUrlProd}}` → `https://mercadoexpress-api-205454922130.southamerica-west1.run.app` (producción)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "17219247"
+  },
+  "item": [
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Get Products list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get product By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products/7",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "7"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"sku\": \"BEB003\",\r\n  \"name\": \"Gaseosa 2L\",\r\n  \"categoryId\": 1,\r\n  \"price\": 2500,\r\n  \"stock\": 100,\r\n  \"minStock\": 30,\r\n  \"supplier\": \"Distribuidora Andina\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrlProd}}/products",
+              "host": [
+                "{{baseUrlProd}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Restock product",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "\r\n// ADD STOCK\r\n\r\n// {\r\n//     \"type\": \"ENTRADA\",\r\n//     \"quantity\": 100, \r\n//     \"reason\": \"Compra de stock\"\r\n// }\r\n\r\n\r\n// SELL - Salida de stock\r\n{\r\n    \"type\": \"SALIDA\",\r\n    \"quantity\": 99, \r\n    \"reason\": \"VENTA\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrlProd}}/products/7/stock",
+              "host": [
+                "{{baseUrlProd}}"
+              ],
+              "path": [
+                "products",
+                "7",
+                "stock"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Alerts",
+      "item": [
+        {
+          "name": "Active Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/alerts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alerts"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ACTIVA"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Purchase Orders",
+      "item": [
+        {
+          "name": "Purchase Order",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"productId\": 2, \"quantity\": 80, \"alertId\": 1 }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Purchase Orders (List)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Purchase Order Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Purchase Order",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "1",
+                "approve"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Purchase Order",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"reason\":\"Testing Purposes\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/2/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "2",
+                "reject"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Receive Purchase Order",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/purchase-orders/1/receive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "purchase-orders",
+                "1",
+                "receive"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Inventory Queries W/ Filters",
+      "item": [
+        {
+          "name": "All filters, can mix",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Bebidas",
+                  "description": "Lácteos, Snacks, Limpieza, Bebidas",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "supplier",
+                  "value": "Lácteos del Valle",
+                  "description": "Lácteos del Valle",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "withActiveAlert",
+                  "value": "true",
+                  "description": "Estado de alerta",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "minStock",
+                  "value": "10",
+                  "description": "Stock Minimo",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "maxStock",
+                  "value": "90",
+                  "description": "Stock Maximo",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Stock Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Bebidas",
+                  "description": "Lácteos, Snacks, Limpieza, Bebidas",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "supplier",
+                  "value": "Lácteos del Valle",
+                  "description": "Lácteos del Valle",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "withActiveAlert",
+                  "value": "true",
+                  "description": "Estado de alerta",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "minStock",
+                  "value": "10",
+                  "description": "Stock Minimo",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "maxStock",
+                  "value": "90",
+                  "description": "Stock Maximo",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Category Filter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Bebidas",
+                  "description": "Lácteos, Snacks, Limpieza, Bebidas",
+                  "type": "text",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Products with alert",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/products",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "withActiveAlert",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": ""
+    },
+    {
+      "key": "baseUrlProd",
+      "value": ""
+    }
+  ]
+}
